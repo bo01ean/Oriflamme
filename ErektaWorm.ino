@@ -1,37 +1,19 @@
 /*
-  WiFi Web Server
-
- A simple web server that shows the value of the analog input pins.
- using a WiFi shield.
-
- This example is written for a network using WPA encryption. For
- WEP or WPA, change the Wifi.begin() call accordingly.
-
- Circuit:
- * WiFi shield attached
- * Analog inputs attached to pins A0 through A5 (optional)
-
- created 13 July 2010
- by dlf (Metodo2 srl)
- modified 31 May 2012
- by Tom Igoe
-
- */
+IR ErektaWorm Controller
+*/
 
 #include <SPI.h>
-#include <WiFi.h>
 #include <String.h>
+#include <IRremote.h>
+int RECV_PIN = 12;
+
+IRrecv irrecv(RECV_PIN);
+decode_results results;
 
 boolean isOn = false;
 
-char ssid[] = "NETGEAR86";      // your network SSID (name)
-//char ssid[] = "linksys";      // your network SSID (name)
-//char pass[] = "EA375176748FBC28862CA50CF6";   // your network password
-char pass[] = "rapiddiamond019";   // your network password
 int keyIndex = 0;                 // your network key Index number (needed only for WEP)
-
-int status = WL_IDLE_STATUS;
-
+int relayBankSize = 8;
 boolean incoming = false;
 
 //String sequence = "
@@ -62,49 +44,85 @@ String sequence = "$1#2#3#4#5#6#7#8#9#10#11#12#13#14#15#16#!50*1#-2#-3#-4#-5#-6#
 //1 //3 //7
 //30 //32 //36
 
-WiFiServer server(80);
 
 void setup() { 
   //Initialize serial and wait for port to open:
   initializeRelays();
   turnOffAllRelays();
+  irrecv.enableIRIn(); // Start the receiver
   Serial.begin(9600);
-  initializeWIFI();  
 }
 
-void initializeWIFI()
-{
-  // check for the presence of the shield:
-  if (WiFi.status() == WL_NO_SHIELD) {
-    Serial.println("WiFi shield not present");
-    // don't continue:
-    while (true);
+void looper() {
+  if (irrecv.decode(&results)) {
+    Serial.println(results.value, HEX);
+    irrecv.resume(); // Receive the next value
   }
-
-  String fv = WiFi.firmwareVersion();
-  if ( fv != "1.1.0" )
-    Serial.println("Please upgrade the firmware");
-
-  // attempt to connect to Wifi network:
-  while ( status != WL_CONNECTED) {
-    Serial.print("Attempting to connect to SSID: ");
-    Serial.println(ssid);
-    // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
-    status = WiFi.begin(ssid, pass);
-    printWifiStatus();
-    // wait 1 seconds for connection:
-    delay(1000);
-  }
-  server.begin();
-  // you're connected now, so print out the status:
-  printWifiStatus(); 
 }
 
 void loop()
 {
-  // listen for incoming clients
-  listenForWIFISequence();
-  //listenForSerialSequence();
+  if (irrecv.decode(&results)) {
+     if(results.value==0xff629d){
+       Serial.println("UP");
+     }
+     if(results.value==0xffa857){
+       Serial.println("DOWN");
+     }
+     if(results.value==0xff22dd){
+       Serial.println("LEFT");
+     }
+     if(results.value==0xffc23d){
+       Serial.println("RIGHT");
+     }
+     if(results.value==0xff02fd){
+       Serial.println("OK");
+     }
+     if(results.value==0xFF6897){
+       Serial.println("1");
+     }
+     if(results.value==0xFF9867){
+       Serial.println("2");
+     }
+     if(results.value==0xffB04F){
+       Serial.println("3");
+     }
+     if(results.value==0xff30CF){
+       Serial.println("4");
+     }
+     if(results.value==0xFF18E7){
+       Serial.println("5");
+     }
+     if(results.value==0xff7A85){
+       Serial.println("6");
+     }
+     if(results.value==0xff10EF){
+       Serial.println("7");
+     }
+     if(results.value==0xff38C7){
+       Serial.println("8");
+     }
+     if(results.value==0xff5AA5){
+       Serial.println("9");
+     }
+     if(results.value==0xff4AB5){
+       Serial.println("0");
+     }
+     if(results.value==0xff42BD){
+       Serial.println("*");
+     }
+     if(results.value==0xff52AD){
+       Serial.println("#");
+     }
+      irrecv.resume(); // Receive the next value
+    }  
+    
+   
+  //Serial.println("LALALALA");
+    //if (irrecv.decode(&results)) {
+    //  parseIRCode();
+    //}
+//  listenForRFSequence();
   if(sequence != "")
   {
     
@@ -117,9 +135,6 @@ void loop()
      int blastSegCount = getSeqCount(seqs[i], '!');
      String blast[blastSegCount];
        setSequence(seqs[i], blast, blastSegCount, '!');
-      
-        
-      
         
      int blastDelay = blast[1].toInt() * 100;
      
@@ -168,11 +183,8 @@ void loop()
 //       Serial.print(" OFF--> ");
 //       Serial.print(relaysToFire[k].toInt()); 
 //     }
-     
-    //Serial.println("");
-      
+    //Serial.println(""); 
     }
-    
     sequence = "";
   }
 }
@@ -226,56 +238,6 @@ void listenForSerialSequence()
       currentLineIsBlank = false;
     }
     
-    // give the web browser time to receive the data
-    delay(1);
-  }
-}
-
-void listenForWIFISequence()
-{
-  WiFiClient client = server.available();
-  
-  while(client) 
-  {
-    boolean currentLineIsBlank = true;
-    
-    if(client.connected()) 
-    {
-      if (client.available()) 
-      {
-        char c = client.read();
-        // if you've gotten to the end of the line (received a newline
-        // character) and the line is blank, the http request has ended,
-        // so you can send a reply
-        //reads URL string from $ to first blank space
-        if(c == ' ' && currentLineIsBlank == true)
-        { 
-          incoming = 0;
-          break;
-        }
-        
-        if(c == '$')
-        { 
-          incoming = 1; 
-          sequence = "";
-          continue;
-        }
-        
-        //Checks for the URL string $1 or $2
-        if(incoming == 1)
-        {
-          sequence = sequence + c;
-        }
-
-        if (c == '\n') 
-        {
-         currentLineIsBlank = true;
-        } 
-        else if (c != '\r') {
-          currentLineIsBlank = false;
-        }
-      }
-    }
     // give the web browser time to receive the data
     delay(1);
   }
@@ -349,13 +311,9 @@ void setSequence(String sequence, String seqs[], int seqCount, char delimiter)
     {
       nextSeqIndex = startSeqIndex + sequence.substring(startSeqIndex).indexOf(delimiter);
       seqs[j] = sequence.substring(startSeqIndex,nextSeqIndex);
-     
-       Serial.print("NextSeqIndex: ");
+      Serial.print("NextSeqIndex: ");
       Serial.println(nextSeqIndex);
-  
     }
-
-    
   }  
   
   
@@ -385,23 +343,6 @@ void fireSequence(String seqs[], int seqCount)
   delay(blastTime);
   digitalWrite(relay, HIGH);
  } 
-}
-
-void printWifiStatus() {
-  // print the SSID of the network you're attached to:
-  Serial.print("SSID: ");
-  Serial.println(WiFi.SSID());
-
-  // print your WiFi shield's IP address:
-  IPAddress ip = WiFi.localIP();
-  Serial.print("IP Address: ");
-  Serial.println(ip);
-
-  // print the received signal strength:
-  long rssi = WiFi.RSSI();
-  Serial.print("signal strength (RSSI):");
-  Serial.print(rssi);
-  Serial.println(" dBm");
 }
 
 int getRelayPos(int pos)
@@ -445,18 +386,69 @@ int getRelayPos(int pos)
   } 
 }
 
-void initializeRelays()
-{
-   for(int i=1; i<=16; i++)
-  {
+void parseIRCode(){
+   if(results.value==0xff629d){
+     Serial.println("UP");
+   }
+   if(results.value==0xffa857){
+     Serial.println("DOWN");
+   }
+   if(results.value==0xff22dd){
+     Serial.println("LEFT");
+   }
+   if(results.value==0xffc23d){
+     Serial.println("RIGHT");
+   }
+   if(results.value==0xff02fd){
+     Serial.println("OK");
+   }
+   if(results.value==0xFF6897){
+     Serial.println("1");
+   }
+   if(results.value==0xFF9867){
+     Serial.println("2");
+   }
+   if(results.value==0xffB04F){
+     Serial.println("3");
+   }
+   if(results.value==0xff30CF){
+     Serial.println("4");
+   }
+   if(results.value==0xFF18E7){
+     Serial.println("5");
+   }
+   if(results.value==0xff7A85){
+     Serial.println("6");
+   }
+   if(results.value==0xff10EF){
+     Serial.println("7");
+   }
+   if(results.value==0xff38C7){
+     Serial.println("8");
+   }
+   if(results.value==0xff5AA5){
+     Serial.println("9");
+   }
+   if(results.value==0xff4AB5){
+     Serial.println("0");
+   }
+   if(results.value==0xff42BD){
+     Serial.println("*");
+   }
+   if(results.value==0xff52AD){
+     Serial.println("#");
+   }
+    irrecv.resume(); // Receive the next value
+}
+
+void initializeRelays() {
+   for(int i=1; i<=relayBankSize; i++) {
     pinMode(getRelayPos(i), OUTPUT);
   }
 }
 
-void turnOffAllRelays()
-{
-  for(int i=1; i<=16; i++)
-  {
+void turnOffAllRelays() {
+  for(int i=1; i<=relayBankSize; i++) {
     digitalWrite(getRelayPos(i), HIGH);
   }
 }
