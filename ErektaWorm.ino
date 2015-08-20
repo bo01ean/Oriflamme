@@ -5,7 +5,7 @@ IR ErektaWorm Controller
 #include <SPI.h>
 #include <String.h>
 #include <IRremote.h>
-int RECV_PIN = 12;
+int RECV_PIN = 2;
 
 IRrecv irrecv(RECV_PIN);
 decode_results results;
@@ -14,6 +14,8 @@ boolean isOn = false;
 
 int keyIndex = 0;                 // your network key Index number (needed only for WEP)
 int relayBankSize = 8;
+
+boolean selenoidStates[8] = {0,0,0,0,0,0,0,0};
 boolean incoming = false;
 
 //String sequence = "
@@ -40,88 +42,36 @@ $1#2#3#4#5#-6#-7#-8#-9#-10#-11#-12#-13#-14#-15#-16!1*
 1*1#2#-3#-4#-5#-6#-7#-8#-9#-10#-11#-12#-13#-14#-15#-16!1*";
 */
 
-String sequence = "$1#2#3#4#5#6#7#8#9#10#11#12#13#14#15#16#!50*1#-2#-3#-4#-5#-6#-7#-8#-9#-10#-11#-12#-13#-14#-15#-16#-!1*";
+//String sequence = "$1#2#3#4#5#6#7#8#9#10#11#12#13#14#15#16#!50*1#-2#-3#-4#-5#-6#-7#-8#-9#-10#-11#-12#-13#-14#-15#-16#-!1*";
+String sequence = "";
 //1 //3 //7
 //30 //32 //36
 
 
 void setup() { 
   //Initialize serial and wait for port to open:
-  initializeRelays();
-  turnOffAllRelays();
-  irrecv.enableIRIn(); // Start the receiver
   Serial.begin(9600);
+  while(!Serial){}// Wait for Serial to wake up and have some Cereal
+  initializeRelays();
+  irrecv.enableIRIn(); // Start the receiver
+
+  Serial.print("ARMING ... in 5 seconds ... ");
+  delay(5 * 1000);
+  // Turn on ARM relay
+  digitalWrite(getRelayPos(relayBankSize), LOW);
+  Serial.println("ARMED.");
 }
 
-void looper() {
+void loop() {
   if (irrecv.decode(&results)) {
+    Serial.print("IR: ");
     Serial.println(results.value, HEX);
     irrecv.resume(); // Receive the next value
-  }
+  }  
 }
 
-void loop()
+void looper()
 {
-  if (irrecv.decode(&results)) {
-     if(results.value==0xff629d){
-       Serial.println("UP");
-     }
-     if(results.value==0xffa857){
-       Serial.println("DOWN");
-     }
-     if(results.value==0xff22dd){
-       Serial.println("LEFT");
-     }
-     if(results.value==0xffc23d){
-       Serial.println("RIGHT");
-     }
-     if(results.value==0xff02fd){
-       Serial.println("OK");
-     }
-     if(results.value==0xFF6897){
-       Serial.println("1");
-     }
-     if(results.value==0xFF9867){
-       Serial.println("2");
-     }
-     if(results.value==0xffB04F){
-       Serial.println("3");
-     }
-     if(results.value==0xff30CF){
-       Serial.println("4");
-     }
-     if(results.value==0xFF18E7){
-       Serial.println("5");
-     }
-     if(results.value==0xff7A85){
-       Serial.println("6");
-     }
-     if(results.value==0xff10EF){
-       Serial.println("7");
-     }
-     if(results.value==0xff38C7){
-       Serial.println("8");
-     }
-     if(results.value==0xff5AA5){
-       Serial.println("9");
-     }
-     if(results.value==0xff4AB5){
-       Serial.println("0");
-     }
-     if(results.value==0xff42BD){
-       Serial.println("*");
-     }
-     if(results.value==0xff52AD){
-       Serial.println("#");
-     }
-      irrecv.resume(); // Receive the next value
-    }  
-    
-   
-  //Serial.println("LALALALA");
-    //if (irrecv.decode(&results)) {
-    //  parseIRCode();
-    //}
 //  listenForRFSequence();
   if(sequence != "")
   {
@@ -339,9 +289,9 @@ void fireSequence(String seqs[], int seqCount)
   Serial.print("BlastTime:");
   Serial.println(blastTime);
    
-  digitalWrite(relay, LOW);
-  delay(blastTime);
   digitalWrite(relay, HIGH);
+  delay(blastTime);
+  digitalWrite(relay, LOW);
  } 
 }
 
@@ -384,6 +334,63 @@ int getRelayPos(int pos)
     default:
       return -1;
   } 
+}
+
+void parseIR() {
+  if (irrecv.decode(&results)) {
+     if(results.value==0xff629d){
+       Serial.println("UP");
+     }
+     if(results.value==0xffa857){
+       Serial.println("DOWN");
+     }
+     if(results.value==0xff22dd){
+       Serial.println("LEFT");
+     }
+     if(results.value==0xffc23d){
+       Serial.println("RIGHT");
+     }
+     if(results.value==0xff02fd){
+       Serial.println("OK");
+     }
+     if(results.value==0xFF6897){
+       Serial.println("1");
+     }
+     if(results.value==0xFF9867){
+       Serial.println("2");
+     }
+     if(results.value==0xffB04F){
+       Serial.println("3");
+     }
+     if(results.value==0xff30CF){
+       Serial.println("4");
+     }
+     if(results.value==0xFF18E7){
+       Serial.println("5");
+     }
+     if(results.value==0xff7A85){
+       Serial.println("6");
+     }
+     if(results.value==0xff10EF){
+       Serial.println("7");
+     }
+     if(results.value==0xff38C7){
+       Serial.println("8");
+     }
+     if(results.value==0xff5AA5){
+       Serial.println("9");
+     }
+     if(results.value==0xff4AB5){
+       Serial.println("0");
+     }
+     if(results.value==0xff42BD){
+       Serial.println("*");
+     }
+     if(results.value==0xff52AD){
+       Serial.println("#");
+     }
+      irrecv.resume(); // Receive the next value
+    }    
 }
 
 void parseIRCode(){
@@ -443,13 +450,35 @@ void parseIRCode(){
 
 void initializeRelays() {
    for(int i=1; i<=relayBankSize; i++) {
-    pinMode(getRelayPos(i), OUTPUT);
-  }
+    Serial.println(i);
+     pinMode(getRelayPos(i), OUTPUT);
+     digitalWrite(getRelayPos(i), HIGH);
+   }
 }
 
-void turnOffAllRelays() {
+void toggleRelay(int POSITION, int DIRECTION) {
+  Serial.print("Toggling Selenoid:");
+  Serial.print(POSITION);
+  Serial.print(" -> ");
+  Serial.println(DIRECTION);
+  digitalWrite(getRelayPos(POSITION), DIRECTION);
+  selenoidStates[POSITION] = DIRECTION;
+}
+
+void switchAllRelays(int DIR) {
   for(int i=1; i<=relayBankSize; i++) {
-    digitalWrite(getRelayPos(i), HIGH);
+    toggleRelay(i, DIR);
+  }  
+}
+
+void triggerSelenoid(int POSITION, int DIRECTION, int PERIOD) {
+  //we don't want to set the selenoid to the same state twice.
+  if (selenoidStates[POSITION] == DIRECTION) {
+    return;
+  } else {
+    toggleRelay(POSITION, DIRECTION);
+    delay(PERIOD);
+    toggleRelay(POSITION, !DIRECTION);
   }
 }
 
